@@ -8,4 +8,4 @@ The lecture videos are [Stanford CS336 Language Modeling from Scratch, Spring 20
 
 ## Written Assignments
 
-The homework assignments used in this repository originate from [Stanford NLP/CRFM](https://cs336.stanford.edu).
+The homework assignments used in this repository originate from [Stanford NLP / CRFM](https://cs336.stanford.edu).
