@@ -1,0 +1,756 @@
+\documentclass[12pt,twoside]{article}
+
+\input{macros-sp26}
+\newcommand{\thelecturenum}{1}
+
+\title{CS336 Lecture 1}
+
+\begin{document}
+
+\handout{Lecture \thelecturenum: Frontier Overview (and Tokenization)}
+
+\setlength{\parindent}{0pt}
+
+\subsection*{Scratch the Frontier Problem}
+
+\textbf{Problem:} Researchers are becoming disconnected from the underlying technology.
+
+\begin{itemize}
+    \item 2016: researchers implemented and trained their own models.
+    \item 2018: researchers downloaded models (e.g., BERT) and fine-tuned them.
+    \item 2026: researchers prompt API models (e.g., GPT/Claude/Gemini).
+\end{itemize}
+
+Moving up levels of abstraction boosts productivity, but
+
+\begin{itemize}
+    \item these abstractions are leaky (in contrast to programming languages or operating systems).
+    \item there is still frontier research to be done that requires tearing up the stack.
+\end{itemize}
+
+\textbf{Claim:} Full understanding of this technology is required for frontier research. But there's one small problem ... frontier models are very expensive.
+
+\begin{itemize}
+    \item 2023: GPT-4 supposedly cost \$100M to train.
+    \item 2025: xAI builds a cluster with 230K GPUs for training Grok.
+\end{itemize}
+
+There are no public details on how frontier models are built. We could build small language models (\(<\)1B parameters), but this might not be representative of large language models.
+
+\begin{itemize}
+    \item Example 1: fraction of FLOPs spent in attention versus MLP changes with scale.
+    \item Example 2: emergence of behavior with scale.
+\end{itemize}
+
+\subsection*{Welcome to Language Modeling}
+
+\begin{question}
+     What can we learn in this subject that transfers to frontier models?
+\end{question}
+
+There are three types of knowledge:
+
+\begin{itemize}
+    \item \textbf{Mechanics}: how things work (what a Transformer is, how model parallelism works).
+    \item \textbf{Mindset:} squeezing the most out of the hardware, taking scaling seriously.
+    \item \textbf{Intuitions:} which data and modeling decisions yield good accuracy.
+\end{itemize}
+
+We can teach mechanics and mindset (these do transfer). We can only partially teach intuitions (these do not necessarily transfer across scales).
+
+\begin{remark}
+    Some design decisions are simply not justifiable and just come from experimentation. 
+\end{remark}
+
+For example, the Noam Shazeer paper that introduced SwiGLU [Shazeer 2020]. 
+
+\begin{itemize}
+    \item Wrong interpretation: scale is all that matters, algorithms don't matter.
+    \item Right interpretation: algorithms that scale are what matter.
+    \item Mathematical abstraction: \textbf{accuracy} \(=\) \textbf{efficiency} \(\times\) \textbf{resources}.
+\end{itemize}
+
+In fact, efficiency is way more important at larger scales (can't afford to be wasteful). 
+
+\begin{question}
+    What is the best model one can build given a certain compute and data budget? In other words, maximize efficiency!
+\end{question}
+
+\subsection*{Current Research Landscape}
+
+\subsubsection*{Pre-Neural (before 2010s)}
+
+\begin{itemize}
+    \item Language model to measure the entropy of English [Shannon 1950].
+    \item N-gram language models (used in machine translation and speech recognition systems) [Brants+ 2007].
+\end{itemize}
+
+\subsubsection*{Neural Ingredients (2010s)}
+
+\begin{itemize}
+    \item Long-Short Term Memory (LSTM) [Hochreiter+ 1997].
+    \item First neural language model [Bengio+ 2003].
+    \item Sequence-to-sequence modeling (for machine translation) [Sutskever+ 2014].
+    \item Adam optimizer [Kingma+ 2014].
+    \item Attention mechanism (for machine translation) [Bahdanau+ 2014].
+    \item Transformer architecture (for machine translation) [Vaswani+ 2017].
+    \item Mixture of experts [Shazeer+ 2017].
+    \item Model parallelism [Huang+ 2018][Rajbhandari+ 2019][Shoeybi+ 2019].
+\end{itemize}
+
+\subsubsection*{Early Foundation Models (late 2010s)}
+
+\begin{itemize}
+    \item ELMo: pretraining with LSTMs, fine-tuning improves downstream tasks [Peters+ 2018].
+    \item BERT: pretraining with Transformers; fine-tuning improves downstream tasks [Devlin+ 2018].
+    \item Google's T5 (11B): cast everything as text-to-text [Raffel+ 2019].
+\end{itemize}
+
+\subsubsection*{Embracing Scaling}
+
+\begin{itemize}
+    \item OpenAI's GPT-2 (1.5B): fluent text, first signs of zero-shot [Radford+ 2019].
+    \item Scaling laws: provide hope / predictability for scaling [Kaplan+ 2020].
+    \item OpenAI's GPT-3 (175B): in-context learning [Brown+ 2020].
+    \item Google's PaLM (540B): massive scale, undertrained [Chowdhery+ 2022].
+    \item DeepMind's Chinchilla (70B): compute-optimal scaling laws [Hoffmann+ 2022].
+\end{itemize}
+
+\subsubsection*{Open Models (2020s)}
+
+Early Attempts (attempts to replicate GPT-3):
+
+\begin{itemize}
+    \item EleutherAI's open datasets (The Pile) and models (GPT-J) [Gao+ 2020][Wang+ 2021].
+    \item Meta's OPT (175B): GPT-3 replication, lots of hardware issues [Zhang+ 2022].
+    \item Hugging Face / BigScience's BLOOM (176B): focused on data sourcing [Workshop+ 2022].
+\end{itemize}
+
+Credible Open-Weight Models (weights + paper):
+
+\begin{itemize}
+    \item Meta's Llama models [Touvron+ 2023][Grattafiori+ 2024].
+    \item Mistral's models [Jiang+ 2023/2024].
+    \item DeepSeek's models [DeepSeek-AI+ 2024/2025].
+    \item Alibaba's Qwen models [Qwen+ 2024][Yang+ 2025].
+    \item Moonshot's Kimi models [Kimi Team 2025/2026].
+    \item Z.ai's GLM models [GLM Team 2025/2026].
+    \item Minimax's models [MiniMax M2.5].
+    \item Xiaomi's MIMO models [Xiaomi MIMO v2].
+\end{itemize}
+
+\begin{claim}
+    These models are approaching closed models (GPT, Claude, Gemini, etc).
+\end{claim}
+
+Open-Source Models (weights + paper + code + data):
+
+\begin{itemize}
+    \item AI2's Olmo models [Groeneveld+ 2024][Team Olmo 2024/2025].
+    \item NVIDIA's Nemotron models [Parmar+ 2024][NVIDIA+ 2025].
+    \item Marin's models (open development) [Marin 8B Retro][Marin 32B Retro].
+\end{itemize}
+
+Openness is important for trust and innovation. Ideas from open models enable us to teach CS336.
+
+\begin{question}
+    What is a language model?
+\end{question}
+
+\begin{itemize}
+    \item 2018 (BERT): something you fine-tune.
+    \item 2020 (GPT-3): something you prompt.
+    \item 2022 (ChatGPT): something you talk to [example conversation].
+    \item 2026 (agents): something that acts autonomously [example trace].
+\end{itemize}
+
+The fundamentals are the same (attention, kernels, optimization). The specifications are different (longer context, inference efficiency matters even more).
+
+\subsection*{Graduate Subject Logistics}
+
+\subsubsection*{Why you should take this subject?}
+
+\begin{itemize}
+    \item You have an obsessive need to understand how things work.
+    \item You want to build up your research engineering muscles.
+\end{itemize}
+
+\subsubsection*{Why you should not take this subject?}
+
+\begin{itemize}
+    \item You actually want to get research done this quarter. (Talk to your advisor.)
+    \item You are interested in learning about the hottest new techniques in AI (e.g., multimodality, RAG, etc). (You should take a seminar class for that.)
+    \item You want to get good results in your own application domain. (You should just prompt or fine-tune an existing model.)
+\end{itemize}
+
+\subsubsection*{Assignments}
+
+\begin{itemize}
+    \item 5 assignments (basics, systems, scaling laws, data, alignment).
+    \item No scaffolding code, but we provide unit tests and adapter interfaces to help you check correctness.
+    \item Implement locally to test for correctness, then run on cluster for benchmarking (accuracy and speed).
+    \item Leaderboard for some assignments (minimize perplexity given training budget).
+\end{itemize}
+
+\subsection*{Basics}
+
+\subsubsection*{Tokenizer}
+
+What are the atoms that the model operates on? A tokenizer converts between raw inputs (bytes) and sequences of integers (tokens).
+
+\begin{itemize}
+    \item Popular tokenizer: \textbf{Byte-Pair Encoding} (BPE) [Sennrich+ 2015].
+    \item \textbf{Intuition:} break input into frequently-occurring chunks.
+    \item Efficiency lens: Reduce context length (1000 bytes → ~250 tokens).
+    \item Adaptive computation (more modeling capacity on interesting parts of input).
+\end{itemize}
+
+\textbf{Dream:} We want tokenizer-free model architectures, which operate directly on bytes. These are promising, but have not yet been scaled up to the frontier.
+
+\subsubsection*{Model architecture}
+
+How does the model "think" with respect to machine learning and neural networks?
+
+\begin{itemize}
+    \item Starting point: original Transformer.
+    \item Activation functions: ReLU, SwiGLU.
+    \item Positional encodings: sinusoidal, RoPE.
+    \item Normalization: LayerNorm, RMSNorm, QK norm, pre-norm versus post-norm.
+    \item Attention: full, sparse/local, group-query (GQA), multi-head latent (MLA) attention.
+    \item Recurrence/state-space models/linear attention: Mamba, Gated DeltaNet.
+    \item MLP: dense, mixture of experts.
+    \item Shape (hidden dimension, depth, number of heads, number of experts).
+\end{itemize}
+
+\subsubsection*{Training}
+
+How do you set the parameters of the model?
+
+\begin{itemize}
+    \item Loss function (e.g., multi-token prediction).
+    \item Optimizer (e.g., AdamW, SOAP, Muon).
+    \item Initialization scale (e.g., Xavier init, muP).
+    \item Learning rate schedule (e.g., cosine, WSD).
+    \item Regularization (e.g., dropout, weight decay).
+    \item Batch size (e.g., critical batch size).
+    \item MoE specific: load balancing (e.g., aux-free).
+\end{itemize}
+
+\subsubsection*{Assignment 1 (basics)}
+
+\begin{itemize}
+    \item Implement BPE tokenizer.
+    \item Implement Transformer, cross-entropy loss, AdamW optimizer, training loop.
+    \item Do resource accounting.
+    \item Train on TinyStories and OpenWebText.
+    \item Leaderboard: minimize OpenWebText perplexity given 45 minutes on a B200.
+\end{itemize}
+
+Everything is about balancing the following:
+
+\begin{itemize}
+    \item expressivity (can represent complex dependencies in the data).
+    \item stability (keep parameter and gradient norms in goldilocks zone).
+    \item efficiency (runs fast on hardware, both training and inference).
+\end{itemize}
+
+\subsection*{Systems}
+
+\subsubsection*{Hardware}
+
+\begin{itemize}
+    \item Resource accounting: compute and memory characteristics of a model.
+    \item Model parameters must be moved from memory (HBM) to the compute (SMs).
+    \item Roofline analysis: understand whether we're compute-bound or memory-bound.
+    \item Benchmarking and profiling (nsight): see what happens in practice.
+\end{itemize}
+
+\subsubsection*{Kernels}
+
+\begin{itemize}
+    \item Kernel is a function that runs on GPU.
+    \item When using PyTorch, each primitive operation launches a standard kernel.
+    \item Can write custom kernels to make GPUs go brrr.
+    \item Principle: organize computation to minimize data movement.
+    \item Naive: read HBM; compute A; write HBM; read HBM; compute B; write HBM.
+    \item Fused: read HBM; compute A and B; write HBM.
+    \item Strategies: operator fusion (matmul + activation), tiling (FlashAttention).
+    \item Warp divergence, memory coalescing, bank conflicts, occupancy, bulk-async memory.
+    \item Write kernels in CUDA/Triton/CUTLASS/ThunderKittens.
+\end{itemize}
+
+\subsubsection*{Parallelism}
+
+\begin{itemize}
+    \item What if we have 1024 GPUs?
+    \item Data movement between GPUs is even slower, but same 'minimize data movement' principle holds.
+    \item Use classic collective operations (e.g., gather, reduce, all-reduce).
+    \item Shard memory (parameters, activations, gradients, optimizer states) across GPUs.
+    \item How to split computation: \(\{\text{data}, \text{tensor}, \text{pipeline}, \text{sequence}, \text{expert}\}\) parallelism.
+\end{itemize}
+
+\subsubsection*{Inference}
+
+Generate tokens given a prompt (needed to actually use models!):
+
+\begin{itemize}
+    \item Inference is also needed for reinforcement learning, test-time compute, evaluation.
+    \item Two phases: prefill and decode.
+    \item Prefill (similar to training): tokens are given, can process all at once (compute-bound).
+    \item Decode: need to generate one token at a time (memory-bound).
+\end{itemize}
+
+Methods to speed up decoding:
+
+\begin{itemize}
+    \item Use cheaper model (via model pruning, quantization, distillation).
+    \item Speculative decoding: use a cheaper "draft" model to generate multiple tokens, then use the full model to score in parallel (exact decoding!).
+    \item Systems optimizations: fused kernels, continuous batching.
+\end{itemize}
+
+\subsubsection*{Assignment 2 (systems)}
+
+\begin{itemize}
+    \item Implement a fused RMSNorm kernel in Triton.
+    \item Implement distributed data parallel training.
+    \item Implement optimizer state sharding.
+    \item Benchmark and profile the implementations.
+\end{itemize}
+
+Recommended book: \textbf{How to Scale Your Model}!
+
+\begin{itemize}
+    \item Nicely lays out how to approach systems for LLMs conceptually.
+    \item From Google, so it foregrounds TPUs, but high-level concepts are similar.
+\end{itemize}
+
+\subsection*{Scaling}
+
+If you had 1e25 FLOPs of compute, what hyperparameters would you use to train a good model? Too expensive to do hyperparameter tuning at full scale!  \\
+
+\textbf{Key Concept:} Instead of a single scale, think of a scaling recipe (FLOPs \(\to\) hyperparameters).
+
+\begin{itemize}
+    \item Run experiments to compute the loss at various smaller scales (e.g., up to 1e24 FLOPs).
+    \item Fit a scaling law to predict the loss of the scaling recipe at the target scale (e.g., 1e25 FLOPs).
+\end{itemize}
+
+Now you can:
+
+\begin{enumerate}
+    \item Optimize the scaling recipe targeting a larger scale using smaller scale experiments.
+    \item Predict the loss at the target scale before actually running the experiment!
+\end{enumerate}
+
+Scaling laws don't happen automatically, they require careful construction of a scaling recipe. Parameterize the model in a way to get hyperparameter transfer [Yang+ 2022]. Predictability is at least as important as optimality! \\
+
+\textbf{Question:} Given a FLOPs budget (C \(=\) 6 N D), use a bigger model (N) or train on more tokens (D)? \\
+
+Classic compute-optimal scaling laws:
+
+\begin{itemize}
+    \item ISOFLOP curves: for multiple small FLOPs budgets, find optimal \(N\).
+    \item Then fit a scaling law to extrapolate to large FLOPs budgets.
+\end{itemize}
+
+TL;DR: D \(=\) 20 N is roughly optimal (e.g., 70B parameter model should be trained on 1.4T tokens).
+
+\begin{remark}
+    This doesn't take into account inference costs (want a smaller model).
+\end{remark}
+
+\subsubsection*{Assignment 3 (scaling)}
+
+\begin{itemize}
+    \item We define a training API (hyperparameters \(\to\) loss) based on previous runs.
+    \item Submit "training jobs" (under a FLOPs budget) and gather data points.
+    \item Fit scaling laws to the data points.
+    \item Submit extrapolated hyperparameters and loss predictions.
+    \item Leaderboard: minimize loss given FLOPs budget.
+\end{itemize}
+
+\subsection*{Data}
+
+What capabilities do we want the model to have? Multilingual? Good at conversation? Agentic coding capabilities?
+
+\subsubsection*{Evaluation}
+
+What is the purpose of evaluation?
+
+\begin{enumerate}
+    \item Internal: guide development (smoothness across scales, relative performance matters).
+    \item External: measure absolute quality of a real use case (ecological validity matters).
+\end{enumerate}
+
+Examples of evaluations:
+
+\begin{enumerate}
+    \item Perplexity: ideally run on private documents not on Internet (avoid contamination).
+    \item Advanced use cases: GPQA, HLE, SWE-Bench, Terminal-Bench.
+\end{enumerate}
+
+LMs are general purpose, require a diverse set of evaluations!
+
+\subsubsection*{Data curation}
+
+\begin{itemize}
+    \item Data does not just fall from the sky.
+    \item Sources: webpages crawled from the Internet, books, arXiv papers, GitHub code, etc.
+    \item Appeal to fair use to train on copyright data?
+    \item Might have to license data (e.g., Google with Reddit data).
+    \item Raw data is HTML, PDF, directories (not text), requires processing.
+\end{itemize}
+
+\subsubsection*{Data processing}
+
+\begin{itemize}
+    \item Transformation: convert HTML / PDF to text (extract main content).
+    \item Filtering: keep high quality data, remove harmful content (via classifiers).
+    \item Deduplication: save compute, avoid memorization; use Bloom filters or MinHash.
+    \item Data mixing: how much to upweight / downweight each source?
+    \item Rewriting / synthetic data: use LM to augment real data, more similar to downstream tasks.
+\end{itemize}
+
+Types of data:
+
+\begin{itemize}
+    \item Pretraining data: large and diverse.
+    \item Mid-training data: high quality, including long-context.
+    \item Post-training data: supervised fine-tuning (conversations, agentic traces with tool calling).
+\end{itemize}
+
+\subsubsection*{Assignment 4 (data)}
+
+\begin{itemize}
+    \item Convert Common Crawl HTML to text.
+    \item Train classifiers to filter for quality and harmful content.
+    \item Deduplication using MinHash.
+    \item Leaderboard: minimize perplexity given token budget.
+\end{itemize}
+
+\subsection*{Alignment}
+
+So far, we have trained a model on full supervision (predict the next token). Now that the model should be reasonable, we can improve it further from weak supervision. Why weak supervision? When it is easier to critique than to generate. \\
+
+Template:
+
+\begin{enumerate}
+    \item Generate responses from the model.
+    \item Score responses with a {human, verifier, LM judge}.
+    \item Update the model to prefer better responses.
+\end{enumerate}
+
+Algorithms:
+
+\begin{itemize}
+    \item Proximal Policy Optimization (PPO) from reinforcement learning.
+    \item Direct Policy Optimization (DPO): for preference data, simpler.
+    \item Group Relative Preference Optimization (GRPO): remove value function.
+\end{itemize}
+
+Challenges:
+
+\begin{itemize}
+    \item RL algorithms are unstable and hard to tune.
+    \item At scale, this requires a lot of new infrastructure (inference with async rollouts).
+    \item Constantly trading off systems efficiency and on-policyness.
+\end{itemize}
+
+\subsubsection*{Assignment 5 (alignment)}
+
+\begin{itemize}
+    \item Implement Direct Preference Optimization (DPO).
+    \item Implement Group Relative Preference Optimization (GRPO).
+\end{itemize}
+
+Remember it's all about \textbf{efficiency}:
+
+\begin{itemize}
+    \item Resources: data + hardware (compute, memory, communication bandwidth).
+    \item How do you train the best model given a fixed set of resources?
+\end{itemize}
+
+Today, we are \textbf{compute-constrained}, so design decisions will reflect squeezing the most out of given hardware.
+
+\begin{itemize}
+    \item Systems: clearly about efficiency.
+    \item Tokenization: working with raw bytes is elegant, but compute-inefficient with today's model architectures.
+    \item Model architecture: many changes motivated by reducing memory or FLOPs (e.g., sharing KV caches, sliding window attention).
+    \item Data filtering: avoid wasting precious compute updating on bad / irrelevant data.
+    \item Scaling laws: use less compute on smaller models to do hyperparameter tuning.
+\end{itemize}
+
+Tomorrow, we will become \textbf{data-constrained}...
+
+\subsection*{Tokenization}
+
+This unit was inspired by Andrej Karpathy's video on tokenization; check it out!
+
+\subsubsection*{Introduction to Tokenization}
+
+Raw text is generally represented as Unicode strings.
+
+\begin{minted}{python}
+    string = "Hello, World!"
+\end{minted}
+
+A language model places a probability distribution over sequences of tokens (usually represented by integer indices).
+
+\begin{minted}{python}
+    indices = [15496, 11, 995, 0]
+\end{minted}
+
+So we need a procedure that \textit{encodes} strings into tokens and a procedure that \textit{decodes} tokens back into strings. A \textbf{Tokenizer} is a class that implements the encode and decode methods.
+
+\begin{minted}{python}
+class Tokenizer(ABC):
+    """Abstract interface for a tokenizer."""
+    def encode(self, string: str) -> list[int]:
+        raise NotImplementedError
+    
+    def decode(self, indices: list[int]) -> str:
+        raise NotImplementedError
+\end{minted}
+
+\subsubsection*{Tokenization Examples}
+
+To get a feel for how tokenizers work, play with this [interactive site].
+
+\begin{itemize}
+    \item A word and its preceding space are part of the same token (e.g., " world").
+    \item A word at the beginning and in the middle are represented differently (e.g., "hello hello").
+    \item Numbers are tokenized into every few digits.
+\end{itemize}
+
+Here's the GPT-5 tokenizer from OpenAI (tiktoken) in action.
+
+\begin{minted}{python}
+    tokenizer = tiktoken.get_encoding("o200k_base")
+    string = "Hello, World!"
+\end{minted}
+
+Check that encode() and decode() roundtrip:
+
+\begin{minted}{python}
+    indices = tokenizer.encode(string)  
+    reconstructed_string = tokenizer.decode(indices)  
+    assert string == reconstructed_string
+\end{minted}
+
+Compression ratio: number of bytes per token.
+
+\begin{minted}{python}
+def get_compression_ratio(string: str, indices: list[int]) -> float:  
+    """Input: `string` that has been tokenized into `indices`. 
+       Output: the number of UTF-8 bytes per token."""
+    num_bytes = len(bytes(string, encoding="utf-8"))  
+    num_tokens = len(indices)                       
+    return num_bytes / num_tokens 
+\end{minted}
+
+\begin{remark}
+    The larger the compression ratio, the shorter the sequence (good since attention is quadratic in sequence length).
+\end{remark}
+
+One could increase compression ratio by increasing vocabulary size (number of possible token values increases), leading to sparsity.
+
+\begin{minted}{python}
+    vocabulary_size = tokenizer.n_vocab
+\end{minted}
+
+\subsubsection*{Character Tokenizer}
+
+A (Unicode) string is a sequence of (Unicode) characters. Each character can be converted into a code point (integer) via \textbf{ord}.
+
+\begin{minted}{python}
+    assert ord("A") == 65
+    assert ord("a") == 97
+\end{minted}
+
+It can be converted back via \textbf{chr}.
+
+\begin{minted}{python}
+    assert chr(65) == "A"
+    assert chr(97) == "a"
+\end{minted}
+
+Now let's build a \textbf{Tokenizer} and make sure it round-trips:
+
+\begin{minted}{python}
+class CharacterTokenizer(Tokenizer):
+    """Represent a string as a sequence of Unicode code points."""
+    def encode(self, string: str) -> list[int]:
+        return list(map(ord, string))
+    
+    def decode(self, indices: list[int]) -> str:
+        return "".join(map(chr, indices))
+\end{minted}
+
+There are approximately 150K Unicode characters. 
+
+\begin{minted}{python}
+    vocabulary_size = max(indices) + 1  # This is a lower bound
+\end{minted}
+
+Problems:
+
+\begin{enumerate}
+    \item This is a very large vocabulary.
+    \item Many characters are quite rare, which is inefficient use of the vocabulary.
+\end{enumerate}
+
+This tokenizer is the worst of both worlds (large vocabulary, low compression ratio).
+
+\subsubsection*{Byte Tokenizer}
+
+Unicode strings can be represented as a sequence of bytes, which can be represented by integers between 0 and 255. The most common Unicode encoding is [UTF-8].
+
+Some Unicode characters are represented by one byte:
+
+\begin{minted}{python}
+    assert bytes("a", encoding="utf-8") == b"a"
+\end{minted}
+
+Others take multiple bytes:
+
+\begin{minted}{python}
+    assert bytes("CS336", encoding="utf-8") == b"\xf0\x9f\x8c\x8d"
+\end{minted}
+
+Now let's build a \textbf{Tokenizer} and make sure it round-trips:
+
+\begin{minted}{python}
+class ByteTokenizer(Tokenizer):
+    """Represent a string as a sequence of bytes."""
+    def encode(self, string: str) -> list[int]:
+        string_bytes = string.encode("utf-8")  
+        indices = list(map(int, string_bytes))  
+        return indices
+    
+    def decode(self, indices: list[int]) -> str:
+        string_bytes = bytes(indices)  
+        string = string_bytes.decode("utf-8")  
+        return string
+\end{minted}
+
+The vocabulary is nice and small: a byte can represent 256 values.
+
+\begin{minted}{python}
+    vocabulary_size = 256
+\end{minted}
+
+What about the compression rate?
+
+\begin{minted}{python}
+    assert compression_ratio == 1
+\end{minted}
+
+The compression ratio is terrible, which means the sequences will be too long. Given that the context length of a Transformer is limited (since attention is quadratic), this is not looking great ...
+
+\subsubsection*{Word Tokenizer}
+
+Another approach (closer to what was done classically in NLP) is to split strings into words.
+
+\begin{minted}{python}
+    string = "I'll say supercalifragilisticexpialidocious!"
+\end{minted}
+
+This regular expression keeps all alphanumeric characters together (words).
+
+\begin{minted}{python}
+    chunks = regex.findall(r"\w+|.", string)
+\end{minted}
+
+To turn this into a \textbf{Tokenizer}, we need to map these chunks into integers. \\
+
+What's good: each token is meaningful (since humans invented words).
+
+\begin{minted}{python}
+    vocabulary_size = "Number of distinct chunks in training data"
+\end{minted}
+
+Compression ratio is good, but vocabulary size can be huge.
+
+\begin{itemize}
+    \item Many words are rare and the model won't learn much about them.
+    \item This doesn't obviously provide a fixed vocabulary size.
+    \item New words we haven't seen during training get a special UNK token, which is ugly and can mess up perplexity calculations.
+\end{itemize}
+
+\subsubsection*{Byte-Pair Tokenizer}
+
+The BPE algorithm was introduced by Philip Gage in 1994 for data compression.
+
+\begin{itemize}
+    \item It was adapted to NLP for neural machine translation.
+    \item Previously, papers had been using word-based tokenization.
+    \item BPE was then used by GPT-2.
+\end{itemize}
+
+Lemma: train the tokenizer on raw text to construct a vocabulary tailored to the data.
+
+\begin{minted}{python}
+class BPETokenizer(Tokenizer):
+    """BPE tokenizer given a set of merges and a vocabulary."""
+    def __init__(self, params: BPETokenizerParams):
+        self.params = params   
+    
+    def encode(self, string: str) -> list[int]:
+        indices = list(map(int, string.encode("utf-8")))  
+        # Note: this is a very slow implementation
+        for pair, new_index in self.params.merges.items():  
+            indices = merge(indices, pair, new_index)  
+        return indices  
+    
+    def decode(self, indices: list[int]) -> str:
+        bytes_list = list(map(self.params.vocab.get, indices))  
+        string = b"".join(bytes_list).decode("utf-8")  
+        return string
+\end{minted}
+
+Proof: start with each byte as a token, and successively merge the most common pair of adjacent tokens.
+
+\begin{minted}{python}
+def train_bpe(string: str, num_merges: int) -> BPETokenizerParams:  
+    """Start with the list of bytes of `string`."""
+    indices = list(map(int, string.encode("utf-8")))  
+    merges: dict[tuple[int, int], int] = {}
+    vocab: dict[int, bytes] = {x: bytes([x]) for x in range(256)}    
+    for i in range(num_merges):
+        # Count the number of occurrences of each pair of tokens
+        counts = count_adjacent_pairs(indices)  
+        # Find the most common pair
+        pair = max(counts, key=counts.get)  
+        # Merge that pair
+        new_index = 256 + i  
+        merges[pair] = new_index  
+        vocab[new_index] = vocab[pair[0]] + vocab[pair[1]]  
+        indices = merge(indices, pair, new_index)       
+    compression_ratio = get_compression_ratio(string, indices)   
+    return BPETokenizerParams(vocab=vocab, merges=merges)
+
+def count_adjacent_pairs(indices: list[int]) -> BPETokenizerMerges:
+    """Return a dictionary mapping each adjacent pair of tokens in 
+      `indices` to the number of times it occurs."""
+    counts = defaultdict(int)
+    for index1, index2 in zip(indices, indices[1:]):
+        counts[(index1, index2)] += 1
+    return counts
+    
+def merge(indices: list[int], 
+          pair: tuple[int, int], new_index: int) -> list[int]:  
+    """Return `indices`, but all instances of `pair` replaced with 
+       `new_index`."""
+    new_indices, i = [], 0     
+    while i < len(indices):
+        if (i + 1 < len(indices) and indices[i] == pair[0] 
+                                 and indices[i + 1] == pair[1)]):
+            new_indices.append(new_index)
+            i += 2
+        else:
+            new_indices.append(indices[i])
+            i += 1   
+    return new_indices
+\end{minted}
+    
+\end{document}
