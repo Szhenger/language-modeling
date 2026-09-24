@@ -1,4 +1,4 @@
-# Language Modeling (from Scratch) (Stanford Online CS336)
+# Language Modeling (from Scratch) (Stanford NLP CS336)
 
 This is Language Modeling from Scratch (Implementation-Heavy AI/ML) covering the Frontier Cornerstone of Natural Language Processing (NLP): Basics, Systems, Scaling, Data and Alignment.
 
@@ -8,4 +8,4 @@ The lecture videos are [Stanford CS336 Language Modeling from Scratch, Spring 20
 
 ## Written Assignments
 
-The homework assignments used in this repository originate from [Stanford NLP / CRFM](https://cs336.stanford.edu).
+The homework assignments used in this repository originate from [Stanford Natural Language Processing](https://cs336.stanford.edu).
