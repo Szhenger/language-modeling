@@ -6,6 +6,6 @@ This is Language Modeling from Scratch (Implementation-Heavy AI/ML) covering the
 
 The lecture videos are [Stanford CS336 Language Modeling from Scratch, Spring 2026](https://www.youtube.com/playlist?list=PLoROMvodv4rMqXOcazWaTUHhq-yembLCV) by Prof. Percy Liang and Prof. Tatsu Hashimoto @ Stanford University.  
 
-## Written Assignments
+## Programming Assignments
 
 The homework assignments used in this repository originate from [Stanford Natural Language Processing](https://cs336.stanford.edu).
