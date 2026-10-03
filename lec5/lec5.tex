@@ -1,0 +1,498 @@
+\documentclass[12pt,twoside]{article}
+
+\input{macros-sp26}
+\newcommand{\thelecturenum}{5}
+
+\title{CS336 Lecture 5}
+
+\begin{document}
+
+\handout{Lecture \thelecturenum: GPUs (and TPUs)}
+
+\setlength{\parindent}{0pt}
+
+\subsection*{Engineering the Graphics Processing Unit}
+
+\begin{center}
+    \textbf{Goal:} Make GPUs (and TPUs) less magic.
+\end{center}
+
+Understand when GPUs get slow. \hfill Understand how to make fast algorithms.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{overview.png}
+\end{figure}
+
+\subsubsection*{Before we start..}
+
+Substantial credit goes to a few sources I'd like to highlight ..
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{goku.png}
+\end{figure}
+
+Horace He's blog (!) \hfill GPU Mode group (!) \hfill TPU (and now GPU) book (!!)
+
+\subsubsection*{Organization today:}
+
+\begin{center}
+    \textbf{Part 1}: GPUs in depth - how they work and important parts.
+\end{center}
+
+\begin{center}
+    \textbf{Part 2}: Understanding GPU performance.
+\end{center}
+
+\begin{center}
+    \textbf{Part 3}: Putting it together - unpacking FlashAttention.
+\end{center}
+
+\subsubsection*{Setting the stage: compute leads to predictable performance}
+
+Often times, compute leads to predictable accuracy gains for language models.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.6\linewidth]{setting.png}
+\end{figure}
+
+Faster hardware, better utilization, improved parallelization can drive progress (for now). 
+
+\subsubsection*{How do we get compute scaling? Early on - Dennard scaling}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.6\linewidth]{dennard.png}
+\end{figure}
+
+But the traditional form of scaling (\textit{Dennard scaling}) from 1980-2000s has tapped out ... how do we feed LLMs' insatiable appetite for compute?  
+
+\subsubsection*{Parallel scaling continues}
+
+Parallel scaling with GPUs has scaled \(> 1000 \times\) in 10 years.
+
+\begin{claim}
+    There is no LLM scaling without GPU scaling.
+\end{claim}
+
+\subsubsection*{How is a CPU different from a GPU?}
+
+CPUs optimize for few fast threads WHILE GPUs optimize for many many threads.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{cpu.png}
+\end{figure}
+
+Many tiny ALUs. \hfill GPUs optimize for throughput.
+
+Much less support for branching. \hfill CPUs optimize for latency.
+
+\subsubsection*{Anatomy of a GPU (execution units)}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.75\linewidth]{sms.png}
+\end{figure}
+
+\begin{itemize}
+    \item GPUs have many \textbf{SMs (streaming multiprocessors)} that independently execute "blocks" (jobs).
+    \item Each SM further contains many \textbf{SPs (streaming processors)} that can execute "threads" in parallel.
+\end{itemize}
+
+\subsubsection*{Anatomy of a GPU (memory)}
+
+\textbf{The closer the memory to the SM, the faster it is} - L1 cache and shared memory is \textit{inside} the SM. L2 cache is on the die and global memory are memory chips next to the GPU. 
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.9\linewidth]{bet.png}
+\end{figure}
+
+SRAM (shared/cache memory) is much more expensive (100\(\times\)) but about 8\(\times\) faster than DRAM (global memory).
+
+\subsubsection*{Execution model of a GPU}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.9\linewidth]{exe.png}
+\end{figure}
+
+There are 3 important players in this execution model.
+\begin{itemize}
+    \item \textbf{Theads:} Threads "do the work" in parallel - all threads execute the same instructions but with different inputs (SIMT).
+    \item \textbf{Blocks:} Blocks are groups of threads. Each block runs on a SM with its own shared memory.
+    \item \textbf{Warp:} Threads always execute in a "warp" of 32 consecutively numbered threads each.
+\end{itemize}
+
+\subsubsection*{Memory model of a GPU}
+
+Each thread can access its own registers and shared memory within the block.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{mem_mod.png}
+\end{figure}
+
+\textbf{Information that goes across blocks needs to be read/written to global memory (slow).}
+
+\subsubsection*{Side thread - What about TPUs?}
+
+GPUs, TPUs, and many other accelerators are at a high level, similar. 
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{tpu.png}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Core structure} - lightweight control, fast (big) matmul unit, fast memory.
+    \begin{figure}[hpbt]
+        \centering
+        \includegraphics[width=1\linewidth]{terms.png}
+    \end{figure}
+    \item Execution difference - no warps (just blocks - tradeoffs in matMul vs nonMatMul).
+    \item Networking difference - how accelerators are networked (in parallelism lecture). 
+\end{itemize}
+
+\subsubsection*{Strengths of the GPU model}
+
+\begin{itemize}
+    \item Easily scales up hard workloads (by adding more SMs).
+    \item Easy (?) to program due to the SIMT model.
+    \item Threads are "lightweight" and can be stopped/resumed.
+\end{itemize}
+
+\subsubsection*{GPUs as fast matrix multipliers}
+
+\begin{itemize}
+    \item Early days of NVIDIA GPUs - programmable shaders.
+    \item Researchers hacked this to do matmuls.
+    \item Volta days of NVIDIA GPUs - new matmul hardware (means matmuls are fast and special).
+    \item Tensor cores (introduced in V and T series) are specialized matrix multiplication circuits.
+\end{itemize}
+
+\begin{center}
+    \textbf{Matmuls are \(> 10\times\) faster than other floating point ops!}
+\end{center}
+
+\subsubsection*{GPUs - what are they and how do they work}
+
+\begin{center}
+    GPUs are massively parallel - same instructions applied across many workers.
+\end{center}
+
+\begin{center}
+    Compute (and especially matmuls) have scaled faster than memory.
+\end{center}
+
+\begin{center}
+    We have to respect the memory hierarchy to make things go fast.
+\end{center}
+
+\subsection*{Making ML workloads fast on a GPU}
+
+Performance on a GPU can be complex, even for something as simple as a square matmul. 
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{roofline_gpu_vs_cpu.png}
+\end{figure}
+
+Key to this section: \textbf{how do we avoid being memory bound?}
+
+\begin{enumerate}
+    \item Control divergence (not a memory bottleneck)
+    \item Low precision computation
+    \item Operator fusion
+    \item Recomputation
+    \item Coalescing memory
+    \item Tiling
+\end{enumerate}
+
+\subsubsection*{Control divergence (not a memory issue)}
+
+\begin{itemize}
+    \item GPUs operate in a SIMT model - every thread in a warp is executing the same instruction.
+    \item Conditionals are fine, but lead to significant overhead from the execution model. 
+\end{itemize}
+
+\subsubsection*{Trick 1: Low precision computation}
+
+If you have fewer bits, you have fewer bits to move.
+
+\begin{center}
+    \textbf{Example:} elementwise ReLU (\(x = \max(0, x)\) on a vector of size \(n\).
+\end{center}
+
+(Float 32 case)
+\begin{itemize}
+    \item \textbf{Memory access}: 1 read (\(x\)), 1 write (if \(x < 0\)), fp32 \(=\) 4 bytes per op.
+    \item \textbf{Operations}: 1 comparison op, 1 FLOP.
+    \item \textbf{Intensity Inverse}: 8 bytes / FLOPs.
+\end{itemize}
+
+(Float 16 case)
+\begin{itemize}
+    \item \textbf{Memory access}: 1 read (\(x\)), 1 write (if \(x < 0\)), fp16 \(=\) 2 bytes per op.
+    \item \textbf{Operations}: 1 comparison op, 1 FLOP.
+    \item \textbf{Intensity Inverse}: 4 bytes / FLOPs.
+\end{itemize}
+
+\subsubsection*{Low precision drives faster matrix multiples}
+
+Lots of operations in modern GPUs are accelerated via low / mixed precision operations.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.75\linewidth]{tensor_cores.png}
+\end{figure}
+
+Operations that can use 16-bit storage (fp16/bf16)
+\begin{itemize}
+    \item Matrix multiplication.
+    \item Most pointwise operations (e.g. relu, tanh, add, sub, mul).
+\end{itemize}
+
+Operations that need ore precision (fp32/fp16)
+\begin{itemize}
+    \item Adding small values to large sums can lead to rounding errors.
+    \item Reduction operations (e.g. sum, softmax, normalization).
+\end{itemize}
+
+Operations that need more range (fp32/bf16)
+\begin{itemize}
+    \item Pointwise operations where \(\vert f(x) \vert >> \vert x \vert\) (e.g. exp, log, pow).
+    \item Loss functions.
+\end{itemize}
+
+\subsubsection*{Frontier in low precision}
+
+Very low precision (FP8) with different tradeoffs. \hfill Multiple scaling factors MXFP8 (Blackwell).
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{fp8_mxfp8.png}
+\end{figure}
+
+\subsubsection*{Trick 2: Operator fusion}
+
+Think of a GPU like a factory - inputs come from a warehouse (memory) and is processed at a factory.
+
+\begin{itemize}
+    \item What if we have to do many operations? Shipping back and forth is somewhat silly.
+    \item \textbf{Example} - Computing \(\sin^2 x\ + \cos^2 x\) naively launches 5 CUDA kernels (back and forth).
+\end{itemize}
+
+All 5 pointwise operations can be fused into a single CUDA kernel call. "Easy" fusions like this can be donw automatically by compilers (torch.compile).
+
+\subsubsection*{Trick 3: Recomputation}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{backprop.png}
+\end{figure}
+
+In backpropagtion, we store the activations (yellow) and compute Jacobians (green). 
+
+\subsubsection*{Storing (and retrieving) activations can be expensive!}
+
+Let's say we stack 3 sigmoids on top of each other.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.5\linewidth]{bad.png}
+\end{figure}
+
+This is really terrible for performance - 8 memory read/writes, very low arithmetic intensity.
+
+\subsubsection*{Throw away the activations, re-compute them!}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.5\linewidth]{recom.png}
+\end{figure}
+
+Throwing away computation can be actually be optimal, with \(5 / 8\)th the memory accesses!
+
+\subsubsection*{Trick (?) 4: DRAM and Memory coalescing}
+
+\textbf{DRAM} (global memory) is read in "burst mode" - each read gives you many bytes!
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{burst_sections.png}
+\end{figure}
+
+Burst mode comes from the slow per-row copy to the sense amplifier.
+
+\subsubsection*{Memory coalescing}
+
+Memory accesses are \textit{coalesced} if all the threads (in a warp) fall within the same burst.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{coalesced_loads.png}
+\end{figure}
+
+\subsubsection*{Coalescing for matrix multiplication}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{coalesced_access.png}
+\end{figure}
+
+For row-major matrices - \textbf{threads that move along rows are not coalesced}.
+
+\begin{remark}
+    Note how the second diagram reads the entire vector at each step!
+\end{remark}
+
+\subsubsection*{Trick 5 (the big one): Tiling}
+
+\textbf{Tiling} is the idea of grouping and ordering threads to minimize global memory access.
+
+\begin{center}
+    Let's go back to matrix multiplication .. Note that memory access is not coalesced and repeated
+\end{center}
+
+\subsubsection*{Tiling - store and reuse information in shared memory}
+
+Cut up the matrix into smaller "tiles" and load this into shared memory.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{tiled_matmul.png}
+\end{figure}
+
+\begin{center}
+    \textbf{Advantages}: repeated reads now access shared, not global memory and memory access can be coalesced.
+\end{center}
+
+\subsubsection*{Tiling math}
+
+\textbf{Non-tiled matrix multiply}: each input is read \(N\) times from global memory.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{tiled_loops.png}
+\end{figure}
+
+\textbf{Tiled matrix multiply}: each input is read \(N / T\) times from global memory and \(T\) times within each tile. This is a factor of \(T\) reduction in global memory access
+
+\subsubsection*{Complexities with tiling}
+
+\textbf{Tile sizes may not divide the matrix dimensions} and lead to low utilization.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{tile_quantization.png}
+\end{figure}
+
+Factors affecting tile sizes:
+\begin{itemize}
+    \item Coalesced memory access.
+    \item Shared memory size.
+    \item Divisibility of the matrix dimension. 
+\end{itemize}
+
+\subsubsection*{Complexities with tiling 2 - memory alignment}
+
+Loading tiles are fast if bursts align with the matrix.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.9\linewidth]{aligment.png}
+\end{figure}
+
+\textbf{Coalesced accesses may be impossible depending on the dimension of the matrix ..} (have to do padding).
+
+\subsubsection*{Putting it together: understanding a matrix mystery}
+
+\begin{center}
+    Why is it \textit{faster} to have bigger matrices?
+\end{center}
+
+We understand some of this (compute intensity, tiling blocks). Let's take a closer look ..
+
+\begin{itemize}
+    \item Tiling has a major impact through alignment.
+    \item Quantization has a nontrivial impact on periodic behavior.
+\end{itemize}
+
+\begin{center}
+    \textbf{An A100 has 108 SMs, so it cannot execute all 120.}
+\end{center}
+
+\subsection*{Understanding Flash Attention}
+
+\textbf{Flash attention} [Dao et al] dramatically accelerates attention .. but how?
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{flashattention.png}
+\end{figure}
+
+\textbf{Technique from paper}: We apply two established techniques (tiling, recomputation) to overcome the technical challenge of computing exact attention in sub-quadratic HBM accesses. 
+
+\subsubsection*{Part 1: tiling for the KQV matrix multiply}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.6\linewidth]{flashattention_diagram.png}
+\end{figure}
+
+\begin{center}
+    This figure from the paper is literally just tiling for a KQV matrix multiply .. \textbf{but what do we do about the softmax?}
+\end{center}
+
+\subsubsection*{Part 2: incremental computation of the softmax}
+
+From Mikailov and Gimelshein 2018,
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{safe_softmax_algorithm.png}
+\end{figure}
+
+To keep track of the max, incrementally update the max and set up a telescoping sum.
+
+\begin{center}
+    \textbf{This lets you compute the softmax tile-by-tile}.
+\end{center}
+
+\subsubsection*{Putting it all together - the forward pass of flash attention}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{flashattention_blocks.png}
+\end{figure}
+
+From Dao 2023, we see
+\begin{itemize}
+    \item Tile-wise computation of the inner products (\(S\)).
+    \item Fusion of the exponential operator.
+    \item Tile-wise computation of the softmax via the online, telescoping sum trick.
+\end{itemize}
+
+\begin{center}
+    (We won't cover the backward pass - but they recompute tile-by-tile ..)
+\end{center}
+
+\subsubsection*{Recapping the Graphics Processing Unit}
+
+\begin{center}
+    Hardware powers scale and low-level details determine what scales or doesn't.
+\end{center}
+
+\begin{center}
+    Current GPU-based compute strongly encourages thinking about matmul \(+\) data movement.
+\end{center}
+
+\begin{center}
+    Thinking about the GPU (coalescing, tiling, fusion) leads us to good performance. 
+\end{center}
+
+\end{document}
