@@ -1,4 +1,4 @@
-# Language Modeling (from Scratch) (Stanford NLP CS336)
+# Language Modeling (from Scratch) (Stanford Online CS336)
 
 This is Language Modeling from Scratch (Implementation-Heavy AI/ML) covering the Frontier Cornerstone of Natural Language Processing (NLP): Basics, Systems, Scaling, Data and Alignment.
 
