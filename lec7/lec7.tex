@@ -200,6 +200,22 @@ Way to remember the terminology:
     \item All - means destination is all devices.
 \end{itemize}
 
+\begin{minted}{python}
+def setup(rank: int, world_size: int):
+    """
+    Initializes the distributed environment.
+    """
+    # Specify where master lives (rank 0), used to coordinate
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "15623"
+    if torch.cuda.is_available():
+        dist.init_process_group("nccl", 
+            rank=rank, world_size=world_size)
+    else:
+        dist.init_process_group("gloo", 
+            rank=rank, world_size=world_size)
+\end{minted}
+
 \subsection*{Hardware Architecture}
 
 Classic (in the home):
@@ -241,6 +257,23 @@ NCCL translates collective operations into low-level packets that are sent betwe
     \item Optimizes the path between GPUs.
     \item Launches GPU kernels to send/receive data.
 \end{itemize}
+
+\begin{minted}{python}
+def spawn(func: Callable, world_size: int, *args, **kwargs):
+    """
+    Launches `world_size` processes that each calls `func` on 
+    world_size, args, kwargs.
+    """
+    # Note: assume kwargs are in the same order as what main needs
+    if not sys.gettrace():
+        # This is the normal code path for multiprocessing
+        args = (world_size,) + args + tuple(kwargs.values())
+        mp.spawn(func, args=args, nprocs=world_size, join=True)
+    else:
+        with DisableDistributed():  
+            args = (0, world_size,) + args + tuple(kwargs.values())
+            func(*args)
+\end{minted}
 
 \subsection*{Torch Distributed Operations}
 
@@ -376,6 +409,12 @@ Notes:
     \item all-reduce moves \(2 \times\) the data in \(2 \times\) the time compared to reduce-scatter.
 \end{itemize}
 
+\begin{minted}{python}
+def cleanup():
+    """Cleans up the distributed environment."""
+    torch.distributed.destroy_process_group()
+\end{minted}
+
 \subsection*{Distributing the Training}
 
 Walk through bare-bones implementations of each strategy on deep MLPs. Recall that MLPs are the compute bottleneck in Transformers, so this is representative. \\
@@ -428,7 +467,7 @@ def data_parallelism_main(rank: int,
         x = data
         for param in params:
             x = x @ param
-            x = F.gelu(x)
+            x = torch.nn.functional.gelu(x)
         loss = x.square().mean()
         # Backward pass
         loss.backward()
@@ -467,7 +506,7 @@ def tensor_parallelism_main(rank: int, world_size: int,
     for layer in range(num_layers):
         # Compute activations (batch_size x local_num_dim)
         x = x @ params[layer]
-        x = F.gelu(x)
+        x = torch.nn.functional.gelu(x)
         # Allocate memory for activations
         activations = [
             torch.empty(batch_size, local_num_dim, 
