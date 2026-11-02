@@ -1,0 +1,680 @@
+\documentclass[12pt,twoside]{article}
+
+\input{macros-sp26}
+\newcommand{\thelecturenum}{9}
+
+\title{CS336 Lecture 9}
+
+\begin{document}
+
+\handout{Lecture \thelecturenum: Scaling Laws}
+
+\setlength{\parindent}{0pt}
+
+\subsection*{Scaling the World}
+
+\textit{Imagine the following scenario..}
+
+\begin{center}
+    Your friend has given you ten thousand B200s for a month, and asked you to build a good open source LM.
+\end{center}
+
+What do you do?
+
+\begin{itemize}
+    \item Put together your infra team and distributed training framework (A2).
+    \item Assemble your great pretraining dataset (A4).
+    \item Run a big model (but which one??) \(\longleftarrow\) we are here.
+\end{itemize}
+
+Wide or deep? How many heads? Which nonlinearity?
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{llm_architecture_table.png}
+\end{figure}
+
+We could cargo cult things from existing LMs .. but how do these get optimized in the first place?
+
+\subsubsection*{Today: simple, predictive "laws" for behaviors of LMs}
+
+The approach - 
+
+\begin{center}
+    \textbf{scaling laws} which are simple, predictive rules for model performance.
+\end{center}
+
+The experiment -
+\begin{itemize}
+    \item \textbf{Old and unpleasant}: tune hyperparameters on big models.
+    \item \textbf{New (over?) optimism}: tune on small models, extrapolate to large ones.
+\end{itemize}
+
+\subsubsection*{Sample complexity and rates}
+
+Theorists have thought about "scaling" for a long time ..
+\[
+    \epsilon(\hat{h}) \leq \min_{h \in H} \epsilon(h) + 2\sqrt{\frac{1}{m}\log{\frac{2k}{\delta}}}
+\]
+\hfill (learning in a finite set of \(k\) hypotheses)
+
+Under the assumptions of Theorem 1.5 (somewhere), the rate of convergence of the estimator \(\hat{p}_n(x_0)\) is \(\psi_n = n^{-\frac{\beta}{2\beta + 1}}\), which means that for a finite constant \(C\) and for all \(n \geq 1\) we have 
+\[
+    \sup_{p \in \mathcal{P}(\beta, L)} \mathbb{E}_p\left[(\hat{p}_n(x_0) - p(x_0))^2\right] \leq C\psi_n^2
+\]
+\hfill (generative modeling for smooth densities)
+
+But these are upper bounds, not actual realized loss values.
+
+\subsubsection*{Hestness et al 2017}
+
+\textbf{Earliest "large scale network" scaling work}: Hestness 2017.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{OG.png}
+\end{figure}
+
+Predictable scaling on many tasks (MT, LM, Speech) and hypothesized scaling shape.
+
+\subsubsection*{Hestness II}
+
+Very ahead of its time ..
+
+
+\begin{center}
+    \textbf{"Emergence"}
+\end{center}
+
+\begin{center}
+    Although small data set testing may be possible, it can be difficult to ensure that training data is large enough to see that power-law learning curve region. We have found that models with poor optimizer parameterization or model priors / initialization how accuracy cliffs, where accuracy is only as good as best guessing, but the model trains on enough data to be in the lower-law region. Researchers must take great care when defining a "large enough" training set for small data testing. We leave the methodology for defining such a training set to future work.
+\end{center}
+
+\begin{center}
+    \textbf{Scaling by computing}
+\end{center}
+
+\begin{center}
+    \textbf{Computational limits:} If we have identified a desirable model to scale to larger training sets, the next potential limitation is the speed of computation. In some cases, training large models on very large data sets would take months or years of critical path compute time, making these training runs impractical for any real world problem on existing systems. However, predictable learning and model size curves may offer a way to project the compute requirements to reach a particular accuracy level. The compute requirements could inform decision about how to scale computational capacity to unlock these compute-limited applications. 
+\end{center}
+
+\begin{center}
+    \textbf{Speed = accuracy}
+\end{center}
+
+\begin{center}
+    \textbf{The Performance-Accuracy Trade-off}: Many DL software and hardware techniques impose a trade-off between model accuracy and the speed of computation. Learning curves and model size growth can indicate whether these techniques could regain lost accuracy by improving the speed of computation. For example, low-precision computation/quantization and sparse models give up som model accuracy (e.g. up to 20\%) in order to improve compute throughput. If the compute throughput improvements allow DL engineers to train larger models on larger data sets, these accuracy losses might be easily recoverable. 
+\end{center}
+
+\subsection*{Neural (LLM) scaling behaviors}
+
+\begin{center}
+    1. Data vs performance: "Are there simple rules that determine how data affects performance?"
+\end{center}
+
+\begin{center}
+    2. Data vs model size: "Do we train on more data or bigger models?"
+\end{center}
+
+\begin{center}
+    3. Parameters vs performance: "How should we set the hyperparameters on the big model??" 
+\end{center}
+
+\subsubsection*{Scaling laws - power law relationships for many factors}
+
+These scaling laws hold on \textit{many} different kind of phenomena!
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{scaling_laws.png}
+\end{figure}
+
+They even hold in nonstandard settings.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{sigmoid_fits.png}
+\end{figure}
+
+\subsubsection*{Data vs performance}
+
+What's a data scaling law?
+
+\begin{center}
+    \textbf{Data scaling laws} : simple formula that maps dataset size (\(n\)) to error!
+\end{center}
+
+What do we expect out of scaling laws?
+
+\begin{center}
+    Monotonic, logistic(-like) curves!
+\end{center}
+
+\subsubsection*{Data scaling laws for language models}
+
+First, an empirical observation!
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.7\linewidth]{kaplan.png}
+\end{figure}
+
+\subsubsection*{Conceptual foundations of data scaling laws}
+
+\begin{question}
+    Why do scaling laws show up?
+\end{question}
+
+We know error should be monotone, but why is it a power law / linear in log-log?
+
+\begin{claim}
+    Estimation error naturally decays polynomially.
+\end{claim}
+
+But this answer may take a moment to understand. Let's work through an example.
+
+\begin{xample}
+    If our task is to estimate the mean of a dataset, what's the scaling law?
+\end{xample}
+
+\subsubsection*{Toy example: mean estimation}
+
+\begin{center}
+    \textbf{Input}: \(x_1 \dots x_n \sim N(\mu, \sigma^2)\)
+\end{center}
+
+\begin{center}
+    \textbf{Task}: estimate the average as \(\hat{\mu} = \frac{\sum_i x_i}{n}\)
+\end{center}
+
+\begin{center}
+    \textbf{What's the error?} By standard arguments ..
+    \[
+        \mathbb{E}[(\hat{\mu} - \mu)^2] = \frac{\sigma^2}{n}
+    \]
+\end{center}
+
+\begin{center}
+    \textbf{This is a "scaling law"}
+    \[
+        \log(\text{Error}) = -\log n + 2 \log \sigma
+    \]
+\end{center}
+
+\begin{center}
+    More generally, any polynomial rate \(1 / n^{\alpha}\) is a scaling law.
+\end{center}
+
+\subsubsection*{Scaling law exponents: an intriguing mystery}
+
+\begin{fact}
+    Similar arguments show most "classical" models (regression, etc) have \(\frac{1}{n}\) scaling.
+\end{fact}
+
+\begin{center}
+    This means we should see \(y = -x + C\).
+\end{center}
+
+\begin{question}
+    What do we find in neural scaling laws?
+\end{question}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.7\linewidth]{mystery.png}
+\end{figure}
+
+\begin{center}
+    Very different from predictions .. Why might this be?
+\end{center}
+
+\subsubsection*{Detour: scaling laws for (nonparameteric) learning}
+
+Neural networks can approximate arbitrary functions. Lets turn that into an example.
+
+\begin{center}
+    \textbf{Input}: \(x_1 \dots x_n\) uniform in 2D unit box. \(y_i = f(x_i) + N(0,1)\)!
+\end{center}
+
+\begin{center}
+    \textbf{Task}: estimate \(f(x)\).
+\end{center}
+
+\begin{center}
+    \textbf{Approach}: cut up the 2D space into boxes with length of \(n^{-\frac{1}{4}}\)!
+\end{center}
+
+What's our estimation error?
+
+\begin{center}
+    Informally, we have \(\sqrt{n}\) boxes, each box gets \(\sqrt{n}\) samples.
+\end{center}
+
+\begin{equation*}
+    \text{Error} \approx \frac{1}{\sqrt{n}} + (\text{other smoothness terms)}
+\end{equation*}
+
+In \(d\)-dimensions, this becomes \(\text{Error} = n^{-\frac{1}{d}}\). \textbf{This means scaling is \(y = -\frac{1}{d}x + C\).}
+
+\begin{claim}
+    Flexible "nonparametric" learning has dimension dependent scaling laws.
+\end{claim}
+
+\subsubsection*{Intrinsic dimensionality theory of data scaling laws}
+
+Some have made the following argument (Bahri 2021)
+
+\begin{enumerate}
+    \item Scaling laws arise due to polynomial rates of learning \(\frac{1}{n^{\alpha}}\).
+    \item Some argue the slope \(\alpha\) is closely connected to the \textit{intrinsic dimensionality} of the data.
+\end{enumerate}
+
+\begin{center}
+    But estimators of intrinsic dimension are sketchy, and this is not airtight ..
+\end{center}
+
+\subsubsection*{Other data scaling laws}
+
+\textbf{Data scaling thus far}: how does dataset size relate to performance?
+
+\begin{itemize}
+    \item Picking optimal data mixture using small scale models
+    \item Deciding whether to repeat data or not
+    \item Combining the two and balancing quality with repetition rate
+\end{itemize}
+
+\textbf{Related question}: how does dataset \textit{composition} affect performance?
+
+\subsubsection*{Other adavanced data scaling law: distribution shift}
+
+\begin{claim}
+    Data composition affects the offset, not the slope. 
+\end{claim}
+
+These "distribution shift" scaling laws can tell us about the importance of collecting diverse data!
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{hashimoto.png}
+\end{figure}
+
+\subsubsection*{In practice: data mixture selection via scaling is hard}
+
+\textbf{Natural idea} - build data scaling laws \hfill \textbf{Empirical eval} - just take the best small dataset
+
+\subsubsection*{Scaling laws under data repetition}
+
+In practice, we have finite data - how does repeating examples affect scaling?
+
+\begin{equation*}
+    D' = U_D + U_DR^{*}_D(1 - e^{-\frac{R_D}{R^{*}_D}}).
+\end{equation*}
+
+\subsubsection*{Scaling laws in \textit{compute unbounded} settings}
+
+\begin{enumerate}
+    \item Scaling laws can "break" if you blindly apply it
+    \item Scaling laws are \textit{lower bounds} so you can always potentially do better
+\end{enumerate}
+
+\subsubsection*{Data selection scaling and accounting for finiteness}
+
+Given that repeated data is less valuable .. Data selection should then be adaptive to scale!
+
+\subsection*{Scaling laws for model engineering}
+
+Now for what I promised at the start: \textbf{model scaling!}
+
+\begin{question}
+    How can we efficiently design huge LMs?
+\end{question}
+
+\begin{itemize}
+    \item LSTMs vs Transformers
+    \item SGD vs Adam
+\end{itemize}
+
+\begin{question}
+    How should we allocate our limited resources?
+\end{question}
+
+\begin{itemize}
+    \item Train models longer vs train bigger models?
+    \item Collect more data vs get more GPUs?
+\end{itemize}
+
+\begin{center}
+    \textbf{Scaling laws provide a simple procedure to answer these questions.}
+\end{center}
+
+\subsubsection*{Hyperparameter questions}
+
+We'll consider some of these choices in the context of the classic Kaplan scaling paper!
+
+\begin{itemize}
+    \item Architecture
+    \item Optimizer
+    \item Aspect ratio / depth
+    \item Batch size
+\end{itemize}
+
+\subsubsection*{1. Architecture: Transformers vs LSTMs}
+
+\begin{question}
+    Are transformers better than LSTMs?
+\end{question}
+
+\begin{itemize}
+    \item Brute force way: spend tens of millions to train a LSTM GPT-3
+    \item Scaling law way:
+\end{itemize}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.8\linewidth]{scaling_laws_lstm_vs_transformer.png}
+\end{figure}
+
+\subsubsection*{2. Optimizer choice: Adam vs SGD}
+
+\begin{question}
+    What about ADAM vs SGD?
+\end{question}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{hestness_rhn_data_scaling.png}
+\end{figure}
+
+\begin{center}
+    (Note, this is in 2017, so pre-transformers. RHN are recurrent highway nets)
+\end{center}
+
+\subsubsection*{3. Depth/width: Number of layers}
+
+\begin{question}
+    Does the depth or width make a huge difference?
+\end{question}
+
+\begin{itemize}
+    \item 1 vs 2 layers makes a huge difference.
+    \item More layers have diminishing returns below \(10^7\) params
+\end{itemize}
+
+\subsubsection*{3. Depth/width: Other Transformer hypers}
+
+\begin{question}
+    Do hyperparameters like the aspect ratio depend on scale?
+\end{question}
+
+\begin{center}
+    Performance depends very mildly on model shape when the total number of non-embedding parameters \(N\) is held fixed. The loss varies only a few percent over a wide range of shapes.  Small differences in parameter counts are compensated for by using the fit to \(L(N)\) as a baseline. Aspect ratio in particular can vary by a factor of 40 while only slightly impacting performance; an \((n_{\text{layer}},d_{\text{model}}) = (6, 4288)\) reaches a loss witin \(3\%\) of the \((48, 1600)\) model used in [RWC\(^{+}\)19].
+\end{center}
+
+\subsubsection*{3. Depth/width: But not all parameters are made equal}
+
+We've been thinking about "parameters" but not all parameters are equal!
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{kaplan_depth_embedding.png}
+\end{figure}
+
+\begin{itemize}
+    \item Embedding layer parameters don't behave the same!
+    \item \textbf{Related}: recent papers on scaling laws for mixtures of experts.
+\end{itemize}
+
+\begin{remark}
+    With MoEs, we expect parameter scaling to change.
+\end{remark}
+
+\subsubsection*{4. Batch size: Critical batch size}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{mccandlish_batch_size.png}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Batch size} - known to have strong diminishing returns past a certain point.
+    \item \textbf{Critical batch} = min number of examples before before diminishing returns (what does that mean?) 
+\end{itemize}
+
+\subsubsection*{4. Critical batch size definitions..}
+
+\begin{question}
+    What is critical batch size, more precisely?
+\end{question}
+
+\begin{itemize}
+    \item Pick a target loss and train model (\(S\) steps and \(E\) examples are needed).
+    \item Sweep over the batches.
+\end{itemize}
+
+The curve should follow roughly .. 
+\[
+    \frac{S}{S_{\text{min}}} - 1 = \left(\frac{E}{E_{\text{min}}} - 1\right)^{-1}.
+\]
+
+Fit for \(S_{\text{min}}, E_{\text{min}}\) on this curve and pick
+\[
+    \mathcal{B}_{\text{crit}} = \frac{E_{\text{min}}}{S_{\text{min}}}.
+\]
+
+This balances both sides of the equation, giving roughly 2\(\times\) the steps / passes optimal!
+
+\begin{claim}
+    This is claimed to be close to the ratio of the trace of the gradient covariance and squared norm of the gradient.
+\end{claim}
+
+\subsubsection*{4. Batch size: critical batch size}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.75\linewidth]{critical_batching.png}
+\end{figure}
+
+The smaller the loss target, the bigger the batch size
+
+\begin{equation*}
+    C_{\text{min}}(C) \equiv \frac{C}{1 + B / B_{\text{crit}}(L)}.
+\end{equation*}
+
+(minimum compute, at \(B \ll B_{\text{crit}}\))
+
+\subsubsection*{5. Learning rates: muP and scale-aware LR choices}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{mup_slide_combined.png}
+\end{figure}
+
+\begin{center}
+    \textbf{If we naively scale up} - optimal learning rate depends on scale.
+\end{center}
+
+\begin{center}
+    We need \textit{scaling aware} initialization and learning rate scaling
+\end{center}
+
+\subsubsection*{Caution - scaling behaviors can differ downstream}
+
+\begin{itemize}
+    \item \textbf{Thus far}: scaling is predictable and depends mainly on parameters.
+    \item \textbf{The catch}: downstream scaling can often be much less predictable.
+\end{itemize}
+
+\subsubsection*{Some surprising takeaways}
+
+\begin{center}
+    The effect of hyperparameters on LLMs can be predicted \textit{before} training!
+\end{center}
+
+\begin{center}
+    - Optimizer choice
+\end{center}
+
+\begin{center}
+    - Model depth
+\end{center}
+
+\begin{center}
+    - Architecture choice
+\end{center}
+
+\begin{center}
+    \textbf{The scaling law based design procedure.}
+\end{center}
+
+\begin{enumerate}
+    \item Train a few smaller models
+    \item Establish a scaling law (e.g. ADAM vs SGD scaling law)
+    \item Select optimal hyperparam based on the scaling law prediction
+\end{enumerate}
+
+\subsubsection*{One important use of scaling laws}
+
+\begin{question}
+    Do we need more data or bigger models?
+\end{question}
+
+Clearly, lots of data is wasted on small models.
+
+\begin{center}
+    \textbf{Joint data-model scaling laws} describe how the two variables relate. 
+\end{center}
+
+From Rosenfeld+ 2020,
+\[
+    \text{Error} = n^{-\alpha} + m^{-\beta} + C.
+\]
+
+From Kaplan+ 2020,
+\[
+    \text{Error} = [m^{-\alpha} + n^{-1}]^{\beta}.
+\]
+
+Provides surprisingly good fits to model-data joint error.
+
+\subsubsection*{Model-data joint scaling is accurate}
+
+From Rosenfeld - fit scaling exponents on small data, small models. Predict rest on large data, large models.
+
+\begin{figure}[hbpt]
+    \centering
+    \includegraphics[width=1\linewidth]{predictions.png}
+\end{figure}
+
+Trading off data and model sizes: optimize \(n^{-\alpha} + m^{-\beta} + C\) with your costs.
+
+\subsubsection*{"Optimal" compute and data tradeoffs as a case study}
+
+Rosenfeld, Kaplan both predict relationship of data, model and performance.
+
+\begin{claim}[Kaplan]
+    \(N_{\text{opt}} = C^{0.73}, D_{\text{opt}} = C^{0.27}\) (tokens per param decreases with \(C\)).
+\end{claim}
+
+\begin{center}
+    \textbf{Chinchilla [Hoffman et al] argue these fits are quite off.}
+\end{center}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1\linewidth]{chinchilla_params_vs_flops.png}
+\end{figure}
+
+\subsection*{Chinchilla in depth - 3 methods}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=1\linewidth]{chinchilla.png}
+\end{figure}
+
+\begin{center}
+    \textbf{The chinchilla authors suggest 3 ways of fitting scaling laws - we'll go over each.}
+\end{center}
+
+\begin{center}
+    The methods (minus third) suggest similar constants. More on this later..
+\end{center}
+
+\subsubsection*{Method 1 - Minimum over runs}
+
+\begin{center}
+    Similar to the FLOPS figure on Kaplan - the minimum over the union of all training curves is a power law.
+\end{center}
+
+\subsubsection*{Method 2 - IsoFLOPS}
+
+\begin{center}
+    Pick a range of FLOP budgets, vary the total parameter count, take the min over these convex shapes. The minima form a power law.
+\end{center}
+
+\subsubsection*{Method 3 - Joint fits}
+
+\begin{center}
+    Run a bunch of models on the size-data grid. Use least squares to fit a joint scaling law.
+\end{center}
+
+\subsubsection*{Explanation 1 - Resolving discrepancies in compute-optimal scaling of LMs}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.8\linewidth]{porian_compute_optimal.png}
+\end{figure}
+
+\begin{itemize}
+    \item Kaplan removed last layer norm param from the count
+    \item Warmup at very small compute budgets was too high
+\end{itemize}
+
+\subsubsection*{Explanation 2 - Reconciling Kaplan and Chinchilla scaling laws}
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.9\linewidth]{pearce_song_overview.png}
+\end{figure}
+
+\begin{center}
+    Non-embedding vs total param choice \(+\) small nonlinearities.
+\end{center}
+
+\subsubsection*{Fun addendum - errors in Chinchilla method 3}
+
+\begin{center}
+    Note that this method three was likely flawed in the original paper. Some authors did data forensics, recovered the raw data, and re-did the fit and got results more consistent with methods one and two.
+\end{center}
+
+\subsubsection*{Important note: train-optimal is likely not what you want}
+
+\textbf{Chinchilla} aims to tell you what gives the best model for fixed training compute .. But most of the compute in a real deployment is inference .. So we should "over" train ..
+
+\begin{itemize}
+    \item \textbf{GPT3} - 2 tokens / param
+    \item \textbf{Chinchilla} - 20 tokens / param
+    \item \textbf{LLaMA65B} - 22 tokens / param
+    \item \textbf{Llama 2 70B} - 29 tokens / param
+    \item \textbf{Mistral 7B} - 110 tokens / param
+    \item \textbf{Llama 3 70B} - 215 tokens / param
+\end{itemize}
+
+The more usage we expect, the more it becomes worth it to pay the upfront cost.
+
+\subsubsection*{IsoFLOPS everywhere}
+
+Methods like IsoFLOPS are pretty easy to execute and usually pretty clean.
+
+\begin{figure}[hpbt]
+    \centering
+    \includegraphics[width=0.9\linewidth]{diffusion_moe_scaling.png}
+\end{figure}
+
+\subsubsection*{Recapping the scaling - surprising and useful!}
+
+\begin{itemize}
+    \item \textbf{Data scaling}: understand how data affects models, clean theory
+    \item \textbf{Model scaling}: dramatically reduce costs for training
+    \item \textbf{Scaling as prediction}: understand what problems can be "brute-forced"
+\end{itemize}
+\end{document}
