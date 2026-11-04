@@ -283,7 +283,7 @@ Everything is about balancing the following:
 
 \begin{itemize}
     \item What if we have 1024 GPUs?
-    \item Data movement between GPUs is even slower, but same 'minimize data movement' principle holds.
+    \item Data movement between GPUs is even slower, but same "minimize data movement" principle holds.
     \item Use classic collective operations (e.g., gather, reduce, all-reduce).
     \item Shard memory (parameters, activations, gradients, optimizer states) across GPUs.
     \item How to split computation: \(\{\text{data}, \text{tensor}, \text{pipeline}, \text{sequence}, \text{expert}\}\) parallelism.
