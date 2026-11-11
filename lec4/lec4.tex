@@ -104,11 +104,13 @@ The gated delta net adds a "no input operation" gate (\(\beta = 0\)) and \textit
 
 The newest Qwen are 3-1 GDN / attention hybrids. Once again, pretty reasonable performance with good inference characteristics.
 
+\hfill
+
 Not many controlled ablations, but some evidence of low losses at small hybrid scales. 
 
 \subsubsection*{Alternative to hybrids: sparse adaption}
 
-Instead of attending to every token, do sparse attention (DSA) \\
+Instead of attending to every token, do sparse attention (DSA). \\
 
 \textbf{Prototype of DSA.} The prototype of DSA (DeepSeek Attention) primarily consists of two components: a lightning indexer and a fine-grained token selection mechanism. \\
 
@@ -116,7 +118,7 @@ The \textbf{lightning indexer} computes the index score \(I_{t, s}\) between the
 \[
     I_{t, s} = \sum_{j = 1}^{H^I}w_{t,j}^I \cdot \text{ReLU}(q_{t, j}^I \cdot k_s^I),
 \]
-where \(H^I\) denotes the number of indexer heads; \(q_{t,j}^I \in \mathbb{R}^{d^I}\) and \(w_{t, j}^I \in \mathbb{R}\) are derived from the query token \(h_t\) and \(k_s^I \in \mathbb{R}^{d^I}\) is derived from the preceding token \(h_s\)
+where \(H^I\) denotes the number of indexer heads; \(q_{t,j}^I \in \mathbb{R}^{d^I}\) and \(w_{t, j}^I \in \mathbb{R}\) are derived from the query token \(h_t\) and \(k_s^I \in \mathbb{R}^{d^I}\) is derived from the preceding token \(h_s\).
 
 \begin{remark}
     We choose the ReLU as the activation function for throughput considerations. Given the lightning indexer has a small number of heads and can be implemented in FP8, its computational efficiency is remarkable.
@@ -233,7 +235,7 @@ RL to learn routes.
     \item Bengio 2013, not common now
 \end{itemize}
 
-Solve a matching problem
+Solve a matching problem.
 \begin{itemize}
     \item Linear assignment for routing
     \item Used in various papers like Clark 2022
@@ -368,7 +370,7 @@ so more frequent use \(=\) stronger downweighting.
 \begin{align*}
     \mathcal{L}_{\text{ExpBal}} &= \alpha_1 \sum_{i = 1}^{N'}f_iP_i, \\
     f_i &= \frac{N'}{K'T}\sum_{t = 1}^{T}\mathbf{1}(\text{Token } t \text{ selects Expert } i), \\
-    P_i &= \frac{1}{T}\sum_{t = 1}^T s_i,t.
+    P_i &= \frac{1}{T}\sum_{t = 1}^T s_{i,t}.
 \end{align*}
 
 \textbf{Per-device balancing} - the objective above, but aggregated by device.
@@ -394,7 +396,7 @@ They call this "\textbf{auxiliary loss free balancing}" (but the approach is not
 \end{center}
 \begin{align*}
     \mathcal{L}_{\text{Bal}} &= \alpha \sum_{i = 1}^{N_r}f_i P_i, \\
-    f_i &= \frac{N_r}{K_rT}\sum_{t = 1}^{T} \mathbf{1}(s_{i,t} \in \text{Topk}(\{s_{j,t} \mid 1 \leq j \neq N_r\}, K_r)), \\
+    f_i &= \frac{N_r}{K_rT}\sum_{t = 1}^{T} \mathbf{1}(s_{i,t} \in \text{Topk}(\{s_{j,t} \mid 1 \leq j \leq N_r\}, K_r)), \\
     s'_{i,t} &= \frac{s_{i,t}}{\sum_{j = 1}^{N_r}s_{j,t}}, \\
     P_i &= \frac{1}{T} \sum_{t = 1}^{T} s'_{i,t}.
 \end{align*}
@@ -477,7 +479,7 @@ To wrap up, we'll walk through the DeepSeek MoE architrcture.
     \begin{align*}
         \mathbf{c}_t^{KV} &= W^{DKV} \mathbf{h}_t, \\
         \mathbf{k}_t^C &= W^{UK} \mathbf{c}_t^{KV}, \\
-        \mathbf{v}_t^{C} &= W^{UK} \mathbf{c}_t^{KV}.
+        \mathbf{v}_t^{C} &= W^{UV} \mathbf{c}_t^{KV}.
     \end{align*}
     \item \textbf{Benefits:} when \(KV\) caching, we only need to store \(\mathbf{c}_t^{KV}\), which can be much smaller (they also compress queries, for memory savings during training). 
     \begin{align*}
