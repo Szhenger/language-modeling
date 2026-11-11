@@ -224,7 +224,7 @@ Key to this section: \textbf{how do we avoid being memory bound?}
 If you have fewer bits, you have fewer bits to move.
 
 \begin{center}
-    \textbf{Example:} elementwise ReLU (\(x = \max(0, x)\) on a vector of size \(n\).
+    \textbf{Example:} elementwise ReLU (\(x = \max(0, x)\)) on a vector of size \(n\).
 \end{center}
 
 (Float 32 case)
@@ -256,7 +256,7 @@ Operations that can use 16-bit storage (fp16/bf16)
     \item Most pointwise operations (e.g. relu, tanh, add, sub, mul).
 \end{itemize}
 
-Operations that need ore precision (fp32/fp16)
+Operations that need more precision (fp32/fp16)
 \begin{itemize}
     \item Adding small values to large sums can lead to rounding errors.
     \item Reduction operations (e.g. sum, softmax, normalization).
@@ -269,8 +269,6 @@ Operations that need more range (fp32/bf16)
 \end{itemize}
 
 \subsubsection*{Frontier in low precision}
-
-Very low precision (FP8) with different tradeoffs. \hfill Multiple scaling factors MXFP8 (Blackwell).
 
 \begin{figure}[hpbt]
     \centering
@@ -286,7 +284,7 @@ Think of a GPU like a factory - inputs come from a warehouse (memory) and is pro
     \item \textbf{Example} - Computing \(\sin^2 x\ + \cos^2 x\) naively launches 5 CUDA kernels (back and forth).
 \end{itemize}
 
-All 5 pointwise operations can be fused into a single CUDA kernel call. "Easy" fusions like this can be donw automatically by compilers (torch.compile).
+All 5 pointwise operations can be fused into a single CUDA kernel call. "Easy" fusions like this can be done automatically by compilers (torch.compile).
 
 \subsubsection*{Trick 3: Recomputation}
 
@@ -295,7 +293,7 @@ All 5 pointwise operations can be fused into a single CUDA kernel call. "Easy" f
     \includegraphics[width=1\linewidth]{backprop.png}
 \end{figure}
 
-In backpropagtion, we store the activations (yellow) and compute Jacobians (green). 
+In backpropagation, we store the activations (yellow) and compute Jacobians (green). 
 
 \subsubsection*{Storing (and retrieving) activations can be expensive!}
 
@@ -317,7 +315,7 @@ This is really terrible for performance - 8 memory read/writes, very low arithme
 
 Throwing away computation can be actually be optimal, with \(5 / 8\)th the memory accesses!
 
-\subsubsection*{Trick (?) 4: DRAM and Memory coalescing}
+\subsubsection*{Trick (?) 4: DRAM and memory coalescing}
 
 \textbf{DRAM} (global memory) is read in "burst mode" - each read gives you many bytes!
 
@@ -344,7 +342,7 @@ Memory accesses are \textit{coalesced} if all the threads (in a warp) fall withi
     \includegraphics[width=1\linewidth]{coalesced_access.png}
 \end{figure}
 
-For row-major matrices - \textbf{threads that move along rows are not coalesced}.
+For row-major matrices \(\to\) \textbf{threads that move along rows are not coalesced}.
 
 \begin{remark}
     Note how the second diagram reads the entire vector at each step!
